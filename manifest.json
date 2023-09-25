@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "decode",
+  "version": "1.0.0",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_icon": {
+      "16": "logo_default.jpg",   
+      "24": "logo_default.jpg",   
+      "32": "logo_default.jpg"
+    }
+  }
+}
