@@ -1,24 +1,48 @@
-var isExtensionActivated = false;
+let isExtensionActivated = false;
 
-chrome.action.onClicked.addListener(toggleExtensionActivated);
-chrome.tabs.onActivated.addListener(onTabSwitch);
+// retrieve 'isExtensionActivated' state from storage 
+chrome.storage.sync.get(
+  ["isExtensionActivated"],
+  function initializeExtensionActivationState(result) {
+    isExtensionActivated = result.isExtensionActivated || false;
+  }
+);
 
-function onTabSwitch(tab) { 
-  // since content.js instances reset on tab switch, the global
-  // background.js must communicate the extension's activation status to content.js
-  chrome.tabs.sendMessage(tab.tabId, { isExtensionActivated });
+// restore 'isExtensionActivated' on page refresh for current tab's content script 
+// by sending a message from the background script
+chrome.tabs.onUpdated.addListener(function onPageRefresh(tabId, changeInfo) {
+  if (changeInfo.status === "complete") {
+    sendMessageToContentScript(tabId);
+  }
+});
+
+// communicate extension activation status to content script on tab switch
+chrome.tabs.onActivated.addListener(function onTabSwitch(activeTab) {
+  sendMessageToContentScript(activeTab.tabId);
+});
+
+chrome.action.onClicked.addListener(function onExtensionIconClick(activeTab) {
+  isExtensionActivated = !isExtensionActivated;
+  updateExtensionIcon();
+  sendMessageToContentScript(activeTab.id);
+  updateStorage();
+});
+
+function updateExtensionIcon() {
+  const iconPath = isExtensionActivated
+    ? "logo_activated.jpg"
+    : "logo_deactivated.jpg";
+  chrome.action.setIcon({ path: iconPath });
 }
 
-function toggleExtensionActivated(tab) {
-  isExtensionActivated = !isExtensionActivated;
-  if (isExtensionActivated) {
-    chrome.action.setIcon({ path: "logo_activated.jpg" });
-  } else {
-    chrome.action.setIcon({ path: "logo_deactivated.jpg" });
-  }
+function sendMessageToContentScript(tabId) {
+  chrome.tabs.sendMessage(tabId, {
+    isExtensionActivated: isExtensionActivated,
+  });
+}
 
-  // let content.js know whether extension is activated 
-  chrome.tabs.sendMessage(tab.id, { isExtensionActivated });
-
-  chrome.storage.sync.set({ isExtensionActivated: isExtensionActivated });
+function updateStorage() {
+  chrome.storage.sync.set({
+    isExtensionActivated: isExtensionActivated,
+  });
 }
